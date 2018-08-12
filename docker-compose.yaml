@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  cache:
+    container_name: zmy_redis
+    image: redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  mq:
+    container_name: zmy_rabbitmq
+    image: rabbitmq:3-management
+    hostname: rabbit
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    restart: always
+
+
+  db:
+    container_name: penta-mysql
+    image: mysql/mysql-server:5.7
+    environment:
+      MYSQL_DATABASE: penta_explorer
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysqldata:/docker-entrypoint-initdb.d # ddl are in db.sql in mysqldata folder
+    restart: always
+
+  app:
+    container_name: app
+    restart: always
+    links:
+      - "cache:redis"
+      - "mq:rabbit"
+      - "db:mysql"
+    build: ./src/main/docker/
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ~/.m2:/root/.m2
+    ports:
+      - "8080:8080"
+    command: mvn clean spring-boot:run
